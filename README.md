@@ -1,2 +1,2 @@
-# camunda-java-integration
-Camunda rest call - FetchAndLock backoff strategy based integration
+# Camunda Java Integration
+Camunda rest API - FetchAndLock backoff strategy based integration.
