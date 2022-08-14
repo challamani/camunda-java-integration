@@ -1,5 +1,4 @@
 # Camunda Java Integration
 Camunda rest API - FetchAndLock backoff strategy based integration.
 
-
-**I'll do checkin soon**
+<h3>Still in-progress</h3>
