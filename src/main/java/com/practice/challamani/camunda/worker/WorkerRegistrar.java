@@ -5,17 +5,17 @@ import com.practice.challamani.camunda.external.worker.AbstractTaskHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.camunda.bpm.client.ExternalTaskClient;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import com.practice.challamani.camunda.config.ApplicationContextHolder;
-import com.practice.challamani.camunda.worker.model.Worker;
 
 import javax.annotation.PostConstruct;
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
 
 @Component
 @Slf4j
+@ConfigurationProperties(prefix = "client-config")
 public class WorkerRegistrar {
 
     private String camundaBaseUrl;
@@ -57,6 +57,5 @@ public class WorkerRegistrar {
     public List<ExternalTaskClient> getClients(){
         return clients;
     }
-
 }
 

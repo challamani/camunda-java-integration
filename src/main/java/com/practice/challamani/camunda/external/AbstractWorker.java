@@ -1,5 +1,7 @@
 package com.practice.challamani.camunda.external;
 
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.springframework.web.client.RestTemplate;
@@ -30,14 +32,9 @@ public class AbstractWorker {
         return ApplicationContextHolder.getContext().getBean(RestTemplate.class);
     }
 
-    protected boolean completeServiceTask(Map<String,Object> serviceTaskVariables) {
+    protected boolean completeTask(Map<String,Object> serviceTaskVariables) {
         try {
-
-            if (serviceTaskVariables != null) {
-                externalTaskService.complete(this.externalTask, serviceTaskVariables);
-            } else {
-                externalTaskService.complete(this.externalTask);
-            }
+            externalTaskService.complete(this.externalTask, MapUtils.emptyIfNull(serviceTaskVariables));
             return true;
         } catch (Exception e) {
             throw e;
