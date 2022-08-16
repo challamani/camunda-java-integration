@@ -1,7 +1,7 @@
 package com.practice.challamani.camunda.worker;
 
 
-import com.practice.challamani.camunda.external.worker.AbstractTaskHandler;
+import com.practice.challamani.camunda.external.AbstractTaskHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.camunda.bpm.client.ExternalTaskClient;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +21,7 @@ public class WorkerRegistrar {
     private String camundaBaseUrl;
     private Integer maxTasks;
     private Long asyncResponseTimeout;
-    private List<String> workers;
+    private String workersEnabled;
 
     @Autowired
     private ApplicationContextHolder applicationContextHolder;
@@ -31,12 +31,13 @@ public class WorkerRegistrar {
     @PostConstruct
     private void init() {
         try {
-            for (String worker : workers) {
+            log.info("");
+            for (String worker : workersEnabled.split(",")) {
                 AbstractTaskHandler abstractTaskHandler = (AbstractTaskHandler) ApplicationContextHolder.getContext().getBean(worker);
                 register(abstractTaskHandler, abstractTaskHandler.getTopicName(), abstractTaskHandler.getDuration());
             }
         } catch (Exception e) {
-
+            log.error("worker registration failed {}",e);
         }
     }
 

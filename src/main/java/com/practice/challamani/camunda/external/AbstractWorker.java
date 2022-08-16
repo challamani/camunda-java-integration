@@ -20,7 +20,8 @@ public class AbstractWorker {
     private String workerId;
     protected Integer retryAttempts;
 
-    public AbstractWorker(ExternalTask externalTask, ExternalTaskService externalTaskService, String workerId, Integer retryAttempts) {
+    public AbstractWorker(ExternalTask externalTask, ExternalTaskService externalTaskService,
+                          String workerId, Integer retryAttempts) {
         this.externalTask = externalTask;
         this.externalTaskService = externalTaskService;
         this.workerId = workerId;

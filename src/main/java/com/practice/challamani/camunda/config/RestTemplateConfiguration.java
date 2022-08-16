@@ -18,7 +18,7 @@ import java.util.List;
 public class RestTemplateConfiguration {
 
     @Bean(name = "basicRestTemplate")
-    RestTemplate restTemplate() {
+    RestTemplate restTemplate(LoggingInterceptor loggingInterceptor) {
         ClientHttpRequestFactory factory = new BufferingClientHttpRequestFactory(new SimpleClientHttpRequestFactory());
         RestTemplate restTemplate = new RestTemplate(factory);
         List<ClientHttpRequestInterceptor> interceptors = restTemplate.getInterceptors();
@@ -26,7 +26,7 @@ public class RestTemplateConfiguration {
         if (CollectionUtils.isEmpty(interceptors)) {
             interceptors = new ArrayList<>();
         }
-        interceptors.add(new LoggingInterceptor());
+        interceptors.add(loggingInterceptor);
         restTemplate.setInterceptors(interceptors);
         List<HttpMessageConverter<?>> messageConverters = new ArrayList<>();
         messageConverters.add(new GsonHttpMessageConverter());
