@@ -1,7 +1,7 @@
 # Camunda Java Integration - external service task implementation.
 
 In this repository you can find some sample external worker implementation using **camunda-external-task-client**, 
-this spring-boot application act as a client by subscribing to set of topics (Camunda's external service tasks), this client continuously poll to camunda with backoff strategy to progress active instances. 
+this spring-boot application act as a client by subscribing to set of topics (Camunda's external service tasks), this client continuously poll to camunda with backoff strategy to process active instances. 
 
 Camunda Rest API - FetchAndLock backoff strategy based integration.
 
