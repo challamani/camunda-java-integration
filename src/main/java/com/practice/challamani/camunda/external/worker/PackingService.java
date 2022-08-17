@@ -11,15 +11,15 @@ import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
 
 @Slf4j
-@Service("order-processor")
-public class OrderProcessor extends AbstractTaskHandler {
+@Service("packing-service")
+public class PackingService extends AbstractTaskHandler {
 
-    private final static String TOPIC="orderQueue";
+    private final static String TOPIC="packingQueue";
     private final TaskExecutor taskExecutor;
     private final SystemProperties.Worker workerConfig;
 
     @Autowired
-    public OrderProcessor(SystemProperties systemProperties,@Qualifier("workerTaskExecutor") TaskExecutor taskExecutor) {
+    public PackingService(SystemProperties systemProperties, @Qualifier("workerTaskExecutor") TaskExecutor taskExecutor) {
         super(systemProperties.getWorkerConfigByTopic(TOPIC));
         this.taskExecutor =  taskExecutor;
         this.workerConfig = systemProperties.getWorkerConfigByTopic(TOPIC);
@@ -28,6 +28,6 @@ public class OrderProcessor extends AbstractTaskHandler {
     @Override
     public void execute(ExternalTask externalTask, ExternalTaskService externalTaskService) {
         log.info("executing the service task for businessKey {}",externalTask.getBusinessKey());
-        taskExecutor.execute(new OrderProcessingWorker(externalTask,externalTaskService,getClass().getName(),workerConfig.getRetries()));
+        taskExecutor.execute(new PackingWorker(externalTask,externalTaskService,getClass().getName(),workerConfig.getRetries()));
     }
 }

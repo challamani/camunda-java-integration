@@ -13,14 +13,14 @@ import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
 
-@Component
 @Slf4j
-@ConfigurationProperties(prefix = "client-config")
+@Component
+@ConfigurationProperties(prefix = "client-config", ignoreInvalidFields = true)
 public class WorkerRegistrar {
 
     private String camundaBaseUrl;
     private Integer maxTasks;
-    private Long asyncResponseTimeout;
+    private Integer asyncResponseTimeout;
     private String workersEnabled;
 
     @Autowired
@@ -31,7 +31,9 @@ public class WorkerRegistrar {
     @PostConstruct
     private void init() {
         try {
-            log.info("");
+            log.info("camundaBaseUrl {} maxTasks {} asyncResponseTimeout {} workersEnabled {}"
+            ,camundaBaseUrl,maxTasks,asyncResponseTimeout,workersEnabled);
+
             for (String worker : workersEnabled.split(",")) {
                 AbstractTaskHandler abstractTaskHandler = (AbstractTaskHandler) ApplicationContextHolder.getContext().getBean(worker);
                 register(abstractTaskHandler, abstractTaskHandler.getTopicName(), abstractTaskHandler.getDuration());
@@ -58,5 +60,38 @@ public class WorkerRegistrar {
     public List<ExternalTaskClient> getClients(){
         return clients;
     }
+
+    public String getCamundaBaseUrl() {
+        return camundaBaseUrl;
+    }
+
+    public void setCamundaBaseUrl(String camundaBaseUrl) {
+        this.camundaBaseUrl = camundaBaseUrl;
+    }
+
+    public Integer getMaxTasks() {
+        return maxTasks;
+    }
+
+    public void setMaxTasks(Integer maxTasks) {
+        this.maxTasks = maxTasks;
+    }
+
+    public Integer getAsyncResponseTimeout() {
+        return asyncResponseTimeout;
+    }
+
+    public void setAsyncResponseTimeout(Integer asyncResponseTimeout) {
+        this.asyncResponseTimeout = asyncResponseTimeout;
+    }
+
+    public String getWorkersEnabled() {
+        return workersEnabled;
+    }
+
+    public void setWorkersEnabled(String workersEnabled) {
+        this.workersEnabled = workersEnabled;
+    }
+
 }
 
