@@ -19,7 +19,8 @@ public class PackingService extends AbstractTaskHandler {
     private final SystemProperties.Worker workerConfig;
 
     @Autowired
-    public PackingService(SystemProperties systemProperties, @Qualifier("workerTaskExecutor") TaskExecutor taskExecutor) {
+    public PackingService(SystemProperties systemProperties,
+                          @Qualifier("workerTaskExecutor") TaskExecutor taskExecutor) {
         super(systemProperties.getWorkerConfigByTopic(TOPIC));
         this.taskExecutor =  taskExecutor;
         this.workerConfig = systemProperties.getWorkerConfigByTopic(TOPIC);
@@ -27,7 +28,9 @@ public class PackingService extends AbstractTaskHandler {
 
     @Override
     public void execute(ExternalTask externalTask, ExternalTaskService externalTaskService) {
-        log.info("executing the service task for businessKey {}",externalTask.getBusinessKey());
-        taskExecutor.execute(new PackingWorker(externalTask,externalTaskService,getClass().getName(),workerConfig.getRetries()));
+        log.info("executing the service task for businessKey {}", externalTask.getBusinessKey());
+        taskExecutor.execute(new PackingWorker(externalTask,
+                externalTaskService, getClass().getName(),
+                workerConfig.getRetries()));
     }
 }

@@ -28,6 +28,8 @@ public class OrderProcessor extends AbstractTaskHandler {
     @Override
     public void execute(ExternalTask externalTask, ExternalTaskService externalTaskService) {
         log.info("executing the service task for businessKey {}",externalTask.getBusinessKey());
-        taskExecutor.execute(new OrderProcessingWorker(externalTask,externalTaskService,getClass().getName(),workerConfig.getRetries()));
+        taskExecutor.execute(new OrderProcessingWorker(externalTask,
+                externalTaskService,getClass().getName(),
+                workerConfig.getRetries()));
     }
 }

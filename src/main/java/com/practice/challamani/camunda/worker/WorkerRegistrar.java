@@ -2,6 +2,7 @@ package com.practice.challamani.camunda.worker;
 
 
 import com.practice.challamani.camunda.external.AbstractTaskHandler;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.camunda.bpm.client.ExternalTaskClient;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,7 +10,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import com.practice.challamani.camunda.config.ApplicationContextHolder;
 
-import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,14 +32,17 @@ public class WorkerRegistrar {
     private void init() {
         try {
             log.info("camundaBaseUrl {} maxTasks {} asyncResponseTimeout {} workersEnabled {}"
-            ,camundaBaseUrl,maxTasks,asyncResponseTimeout,workersEnabled);
+                    , camundaBaseUrl, maxTasks, asyncResponseTimeout, workersEnabled);
+            List.of(workersEnabled.split(",")).forEach(worker ->
+                    {
+                        log.info("worker enabled {}", worker);
+                        AbstractTaskHandler abstractTaskHandler = (AbstractTaskHandler) ApplicationContextHolder.getContext().getBean(worker);
+                        register(abstractTaskHandler, abstractTaskHandler.getTopicName(), abstractTaskHandler.getDuration());
+                    }
+            );
 
-            for (String worker : workersEnabled.split(",")) {
-                AbstractTaskHandler abstractTaskHandler = (AbstractTaskHandler) ApplicationContextHolder.getContext().getBean(worker);
-                register(abstractTaskHandler, abstractTaskHandler.getTopicName(), abstractTaskHandler.getDuration());
-            }
-        } catch (Exception e) {
-            log.error("worker registration failed {}",e);
+        } catch (Exception ex) {
+            log.error("worker registration failed", ex);
         }
     }
 

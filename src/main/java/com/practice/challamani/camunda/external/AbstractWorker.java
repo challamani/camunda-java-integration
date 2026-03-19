@@ -1,6 +1,5 @@
 package com.practice.challamani.camunda.external;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
@@ -17,7 +16,7 @@ public class AbstractWorker {
 
     protected ExternalTask externalTask;
     protected ExternalTaskService externalTaskService;
-    private String workerId;
+    private final String workerId;
     protected Integer retryAttempts;
 
     public AbstractWorker(ExternalTask externalTask, ExternalTaskService externalTaskService,

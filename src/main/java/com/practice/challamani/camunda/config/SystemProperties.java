@@ -1,11 +1,12 @@
 package com.practice.challamani.camunda.config;
 
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -13,13 +14,12 @@ import java.util.List;
 @ConfigurationProperties(prefix = "workers-config", ignoreInvalidFields = true)
 public class SystemProperties {
 
+    @Setter
     private Integer noOfWorkers;
     private Boolean async;
+    @Setter
+    @Getter
     private List<Worker> workers;
-
-    public List<Worker> getWorkers() {
-        return workers;
-    }
 
     public static class Worker {
 
@@ -80,14 +80,6 @@ public class SystemProperties {
                 '}';
     }
 
-    public Integer getNoOfWorkers() {
-        return noOfWorkers;
-    }
-
-    public void setNoOfWorkers(Integer noOfWorkers) {
-        this.noOfWorkers = noOfWorkers;
-    }
-
     public boolean isAsync() {
         return async;
     }
@@ -103,7 +95,4 @@ public class SystemProperties {
                 .findFirst().orElse(null);
     }
 
-    public void setWorkers(List<Worker> workers) {
-        this.workers = workers;
-    }
 }
