@@ -1,0 +1,8 @@
+camunda:
+  process-test:
+    runtime-mode: MANAGED
+    camunda-docker-image-version: 8.8.0
+    multi-tenancy-enabled: false
+
+client-config:
+  enabled: false

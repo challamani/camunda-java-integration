@@ -6,6 +6,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.camunda.bpm.client.ExternalTaskClient;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import com.practice.challamani.camunda.config.ApplicationContextHolder;
@@ -15,6 +16,7 @@ import java.util.List;
 
 @Slf4j
 @Component
+@ConditionalOnProperty(prefix = "client-config", name = "enabled", havingValue = "true", matchIfMissing = true)
 @ConfigurationProperties(prefix = "client-config", ignoreInvalidFields = true)
 public class WorkerRegistrar {
 

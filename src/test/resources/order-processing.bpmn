@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  id="Definitions_OrderProcessing_Test"
+                  targetNamespace="http://camunda.io/examples">
+  <bpmn:process id="OrderProcessing" name="Order Processing" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1" name="Initiate an order">
+      <bpmn:outgoing>Flow_0y7h5fq</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:sequenceFlow id="Flow_0y7h5fq" sourceRef="StartEvent_1" targetRef="Activity_1au7l6h"/>
+
+    <bpmn:serviceTask id="Activity_1au7l6h" name="Check Order Information">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="checkOrderInformation" retries="3"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0y7h5fq</bpmn:incoming>
+      <bpmn:outgoing>Flow_1xo53x5</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:sequenceFlow id="Flow_1xo53x5" sourceRef="Activity_1au7l6h" targetRef="Activity_0lurhtc"/>
+
+    <bpmn:serviceTask id="Activity_0lurhtc" name="Pending Order Queue">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="orderQueue" retries="3"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1xo53x5</bpmn:incoming>
+      <bpmn:outgoing>Flow_0cb9fuv</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:sequenceFlow id="Flow_0cb9fuv" sourceRef="Activity_0lurhtc" targetRef="Activity_08cjw4y"/>
+
+    <bpmn:serviceTask id="Activity_08cjw4y" name="Quality &amp; Packing Service">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="packingQueue" retries="3"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0cb9fuv</bpmn:incoming>
+      <bpmn:outgoing>Flow_0as2pmr</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:sequenceFlow id="Flow_0as2pmr" sourceRef="Activity_08cjw4y" targetRef="Gateway_06ewd9c"/>
+
+    <bpmn:exclusiveGateway id="Gateway_06ewd9c" name="Quality Check Pass">
+      <bpmn:incoming>Flow_0as2pmr</bpmn:incoming>
+      <bpmn:outgoing>Flow_1r9vmkr</bpmn:outgoing>
+      <bpmn:outgoing>Flow_04a7huk</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:sequenceFlow id="Flow_1r9vmkr" name="True" sourceRef="Gateway_06ewd9c" targetRef="Activity_0k3x8t3">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">= isQualityPassed</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_04a7huk" name="False" sourceRef="Gateway_06ewd9c" targetRef="Event_1nz6zik">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">= not(isQualityPassed)</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:serviceTask id="Activity_0k3x8t3" name="Initiate a delivery">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="initiateDelivery" retries="3"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1r9vmkr</bpmn:incoming>
+      <bpmn:outgoing>Flow_03yo2bf</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:sequenceFlow id="Flow_03yo2bf" sourceRef="Activity_0k3x8t3" targetRef="Event_1nz6zik"/>
+
+    <bpmn:endEvent id="Event_1nz6zik" name="End">
+      <bpmn:incoming>Flow_03yo2bf</bpmn:incoming>
+      <bpmn:incoming>Flow_04a7huk</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+</bpmn:definitions>
+
