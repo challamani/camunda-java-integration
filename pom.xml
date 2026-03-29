@@ -52,9 +52,10 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.camunda.bpm</groupId>
-			<artifactId>camunda-external-task-client</artifactId>
-			<version>7.24.0</version>
+			<groupId>io.camunda</groupId>
+			<artifactId>camunda-spring-boot-3-starter</artifactId>
+			<version>8.8.19</version>
+			<scope>compile</scope>
 		</dependency>
 
 		<!-- Java 17/21 does not bundle JAXB; required by Camunda client stack -->

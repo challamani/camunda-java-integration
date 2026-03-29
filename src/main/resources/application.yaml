@@ -1,0 +1,11 @@
+#Camunda Worker Configuration - Camunda 8.0
+server:
+  port: 8082
+
+camunda:
+  client:
+    mode: self-managed
+    auth:
+      method: none
+    grpc-address: http://localhost:26500
+    rest-address: http://localhost:8080

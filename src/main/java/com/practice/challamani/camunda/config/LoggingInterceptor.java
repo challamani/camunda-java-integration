@@ -20,7 +20,9 @@ import java.nio.charset.Charset;
 public class LoggingInterceptor implements ClientHttpRequestInterceptor {
 
 	@Override
-	public ClientHttpResponse intercept(HttpRequest request, byte[] body, ClientHttpRequestExecution execution)
+	public ClientHttpResponse intercept(HttpRequest request,
+										byte[] body,
+										ClientHttpRequestExecution execution)
 			throws IOException {
 		logRequest(request, body);
 		ClientHttpResponse response = execution.execute(request, body);

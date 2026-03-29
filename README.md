@@ -1,9 +1,7 @@
-# Camunda Java Integration - external service task implementation.
 
-In this repository you can find some sample external worker implementation using **camunda-external-task-client**, 
-this spring-boot application act as a client by subscribing to set of topics (Camunda's external service tasks), this client continuously poll to camunda with backoff strategy to process active instances. 
+## Camunda 8 and Spring Boot 3.x integration example with external service tasks and receive tasks.
 
-Camunda Rest API - `FetchAndLock` backoff strategy based integration.
+This repo contains a sample Spring Boot application that demonstrates how to integrate with Camunda 8 using the Zeebe client. It includes examples of external service tasks and receive tasks, showcasing how to interact with the Camunda engine from a Spring Boot application.
 
 ## Java version
 
@@ -11,19 +9,21 @@ Camunda Rest API - `FetchAndLock` backoff strategy based integration.
 - Optional fallback: **Java 17** via Maven profile `java17`
 
 
-## External service-task example (Start order processing workflow)
+## Exploring the Camunda 8 features with a sample order processing workflow
 
-1. Start camunda instance in your local using docker image
+1. Start Camunda instance in your local using 
+
+Download the latest - https://docs.camunda.io/docs/self-managed/quickstart/developer-quickstart/c8run/
 
     ```shell
-        docker pull camunda/camunda-bpm-platform:latest
-        docker run -d --name camunda -p 8080:8080 camunda/camunda-bpm-platform:latest
+        cd c8run-8*
+        ./start.sh
     ```
 
 2. Install Camunda Modeler
     [Camunda Modeler](https://camunda.com/download/modeler/)
 
-3. Deploy BPMN file using modeler - ```resource/order-processing.bpmn```
+3. Deploy BPMN file using modeler - ```resource/order-process-v2.bpmn```
 
 4. Deploy the process definition using Camunda Rest API
 
@@ -41,21 +41,36 @@ Camunda Rest API - `FetchAndLock` backoff strategy based integration.
 ## Receive task example
 
 1. Deploy and Start the process using Camunda modeler or Curl command as mentioned above.
-2. Process waits at the `Receive Task` until it receives the message with name `SimpleNotifyRef` and business key `Example-9001`, you can trigger the message using below curl command or using Camunda UI - Message option.
+2. Process waits at the `Receive Task` until it receives the message with name `Message_Confirmation` and correlationKey is `orderId`, you can trigger the message using below curl command or using Camunda UI - Message option.
 
 3.
+
 ```shell
-curl -X POST http://localhost:8080/engine-rest/message \
-     --user demo:demo \
+curl -X POST http://localhost:8080/v2/messages/publication \
      -H "Content-Type: application/json" \
      -d '{
-          "messageName": "SimpleNotifyRef",
-          "businessKey": "Example-90001",
-          "resultEnabled": true
+           "name": "Message_Confirmation",
+           "correlationKey": "123456789",
+           "variables": {
+             "approvedBy": "admin"
+           },
+           "timeToLive": 300000
          }'
 ```
 
-*Refer below links for more information*
+4. Token will move forward to service-task and execute the logic in `processPacking` method and complete the process instance.
+
+- Completing the service-tasks
+```java
+@JobWorker(type = "packingQueue")
+public Map<String, Object> processPacking(final ActivatedJob job) {
+    String orderId = job.getVariable(VAR_ORDER_ID).toString();
+    boolean isQualityPassed = !orderId.startsWith("TEST");
+    return createResponse(Map.of("IS_QUALITY_PASSED", isQualityPassed));
+} 
+```
+
+5. *Refer below links for more information*
 
 [Camunda Docker Image](https://hub.docker.com/r/camunda/camunda-bpm-platform/)
 
@@ -64,7 +79,6 @@ curl -X POST http://localhost:8080/engine-rest/message \
 [Fetch and Lock external task](https://docs.camunda.org/manual/latest/reference/rest/external-task/fetch/)
 
 <h4>***NOTE: Implementation partially completed.***</h4>
-
 
 ![camunda-process-screenshot.png](src/main/resources/camunda-process-screenshot.png)
 
