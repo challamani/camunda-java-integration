@@ -50,7 +50,7 @@ curl -X POST http://localhost:8080/v2/messages/publication \
      -H "Content-Type: application/json" \
      -d '{
            "name": "Message_Confirmation",
-           "correlationKey": "123456789",
+           "correlationKey": "TEST123456789",
            "variables": {
              "approvedBy": "admin"
            },

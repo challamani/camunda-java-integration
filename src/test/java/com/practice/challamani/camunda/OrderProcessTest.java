@@ -19,6 +19,9 @@ import static io.camunda.process.test.api.CamundaAssert.assertThat;
 @ActiveProfiles("test")
 class OrderProcessTest {
 
+    private static final String PROCESS_ID = "Process_0rcqim1";
+    private static final String MESSAGE_NAME = "Message_Confirmation";
+
     @Autowired
     private CamundaClient client;
 
@@ -27,7 +30,25 @@ class OrderProcessTest {
 
     private void deployOrderProcess() {
         client.newDeployResourceCommand()
-                .addResourceFromClasspath("order-processing.bpmn")
+                .addResourceFromClasspath("order-process-v2.bpmn")
+                .send()
+                .join();
+    }
+
+    private ProcessInstanceEvent startOrderProcess(String orderId) {
+        return client.newCreateInstanceCommand()
+                .bpmnProcessId(PROCESS_ID)
+                .latestVersion()
+                .variables(Map.of("orderId", orderId))
+                .send()
+                .join();
+    }
+
+    private void publishOrderConfirmation(String orderId) {
+        client.newPublishMessageCommand()
+                .messageName(MESSAGE_NAME)
+                .correlationKey(orderId)
+                .variables(Map.of("orderId", orderId))
                 .send()
                 .join();
     }
@@ -36,46 +57,22 @@ class OrderProcessTest {
     void shouldCompleteOrderProcessingSuccessPath() {
         deployOrderProcess();
 
-        // 1. Start
-        ProcessInstanceEvent instance = client.newCreateInstanceCommand()
-                .bpmnProcessId("OrderProcessing")
-                .latestVersion()
-                .send().join();
+        ProcessInstanceEvent instance = startOrderProcess("ORDER-001");
+        publishOrderConfirmation("ORDER-001");
 
         assertThat(instance).isCreated();
-        testContext.mockJobWorker("checkOrderInformation")
-                .thenComplete(Map.of("orderValid", true));
-
-        testContext.mockJobWorker("orderQueue")
-                .thenComplete();
-
-        testContext.mockJobWorker("packingQueue")
-                .thenComplete(Map.of("isQualityPassed", true));
-
-        testContext.mockJobWorker("initiateDelivery")
-                .thenComplete();
         assertThat(instance).isCompleted();
     }
 
     @Test
-    void shouldFailOrderProcessing() {
+    void shouldStayActiveWhenQualityCheckFails() {
         deployOrderProcess();
 
-        ProcessInstanceEvent instance = client.newCreateInstanceCommand()
-                .bpmnProcessId("OrderProcessing")
-                .latestVersion()
-                .send().join();
-
-        testContext.mockJobWorker("checkOrderInformation")
-                .thenComplete();
-        testContext.mockJobWorker("orderQueue").thenComplete();
+        ProcessInstanceEvent instance = startOrderProcess("TEST-FAIL-001");
+        publishOrderConfirmation("TEST-FAIL-001");
+        // On failed quality check, the token moves to Manual Review and remains active.
         assertThat(instance).isActive();
-
-        // Mock Quality check FAILURE
-        testContext.mockJobWorker("packingQueue")
-                .thenComplete(Map.of("isQualityPassed", false));
-
-        // Assert it went straight to End and skipped "Initiate a delivery"
-        assertThat(instance).isCompleted();
+        assertThat(instance).hasActiveElements("Activity_1nid25r");
     }
 }
+

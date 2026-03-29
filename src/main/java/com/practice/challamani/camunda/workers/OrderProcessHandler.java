@@ -11,7 +11,7 @@ import java.util.Map;
 
 @Component
 @Slf4j
-public class OrderProcessingWorker {
+public class OrderProcessHandler {
 
     private static final String VAR_PROCESSED_AT = "processedAt";
     private static final String VAR_ORDER_ID = "orderId";

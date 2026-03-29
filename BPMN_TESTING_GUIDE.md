@@ -2,9 +2,9 @@
 
 ## Overview
 
-This guide explains how to implement comprehensive end-to-end (E2E) BPMN process testing using **Camunda's process-test-spring** library with **Testcontainers** before deploying process definitions to an actual Camunda 8 engine.
+This guide explains how to implement end-to-end (E2E) BPMN process testing using **Camunda's process-test-spring** library with **Testcontainers** before deploying to a Camunda 8 engine.
 
-Instead of manually testing BPMN workflows through the UI or relying on integration tests against live engines, testcontainer-based E2E testing allows you to:
+Instead of manually testing BPMN workflows through the UI or relying on live-engine integration tests, testcontainer-based E2E testing allows you to:
 - Automatically validate process flows in isolated test environments
 - Catch deployment errors early in the development cycle
 - Verify variable flows, conditional logic, and error handling
@@ -30,10 +30,10 @@ Instead of manually testing BPMN workflows through the UI or relying on integrat
 │  │  - Isolated from production                       │  │
 │  └───────────────────────────────────────────────────┘  │
 │  ┌───────────────────────────────────────────────────┐  │
-│  │  CamundaClient + Job Worker Mocks                 │  │
+│  │  CamundaClient + Spring Job Workers               │  │
 │  │  - Deploy BPMN definitions                        │  │
 │  │  - Start process instances                        │  │
-│  │  - Mock external job workers                      │  │
+│  │  - Workers poll and complete service tasks        │  │
 │  │  - Assert process state                           │  │
 │  └───────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────┘
@@ -88,11 +88,32 @@ class OrderProcessTest {
     private CamundaClient client;
 
     @Autowired
-    private CamundaProcessTestContext testContext;
+    private CamundaProcessTestContext testContext; // Optional for mock-worker scenarios
+
+    private static final String PROCESS_ID = "Process_0rcqim1";
+    private static final String MESSAGE_NAME = "Message_Confirmation";
 
     private void deployOrderProcess() {
         client.newDeployResourceCommand()
-                .addResourceFromClasspath("order-processing.bpmn")
+                .addResourceFromClasspath("order-process-v2.bpmn")
+                .send()
+                .join();
+    }
+
+    private ProcessInstanceEvent startOrderProcess(String orderId) {
+        return client.newCreateInstanceCommand()
+                .bpmnProcessId(PROCESS_ID)
+                .latestVersion()
+                .variables(Map.of("orderId", orderId))
+                .send()
+                .join();
+    }
+
+    private void publishOrderConfirmation(String orderId) {
+        client.newPublishMessageCommand()
+                .messageName(MESSAGE_NAME)
+                .correlationKey(orderId)
+                .variables(Map.of("orderId", orderId))
                 .send()
                 .join();
     }
@@ -110,95 +131,62 @@ class OrderProcessTest {
 ```java
 @Test
 void shouldCompleteOrderProcessingSuccessPath() {
-    // 1. Deploy the BPMN model
     deployOrderProcess();
 
-    // 2. Create a process instance
-    ProcessInstanceEvent instance = client.newCreateInstanceCommand()
-            .bpmnProcessId("OrderProcessing")
-            .latestVersion()
-            .variables(Map.of(
-                "customerId", "CUST-123",
-                "orderAmount", 99.99
-            ))
-            .send()
-            .join();
+    ProcessInstanceEvent instance = startOrderProcess("ORDER-001");
 
-    // 3. Assert process started
+    // Receive task is released by message correlation on orderId
+    publishOrderConfirmation("ORDER-001");
+
     assertThat(instance).isCreated();
-
-    // 4. Mock external service tasks (or job workers)
-    testContext.mockJobWorker("checkOrderInformation")
-            .thenComplete(Map.of("orderValid", true));
-
-    testContext.mockJobWorker("orderQueue")
-            .thenComplete();
-
-    testContext.mockJobWorker("packingQueue")
-            .thenComplete(Map.of("isQualityPassed", true));
-
-    testContext.mockJobWorker("initiateDelivery")
-            .thenComplete();
-
-    // 5. Assert process completed successfully
     assertThat(instance).isCompleted();
 }
 ```
 
-### Example: Error/Branch Path Test
+### Example: Failed Quality Branch
 
 ```java
 @Test
-void shouldFailOrderProcessingOnQualityCheck() {
+void shouldStayActiveWhenQualityCheckFails() {
     deployOrderProcess();
 
-    ProcessInstanceEvent instance = client.newCreateInstanceCommand()
-            .bpmnProcessId("OrderProcessing")
-            .latestVersion()
-            .send()
-            .join();
+    ProcessInstanceEvent instance = startOrderProcess("TEST-FAIL-001");
 
-    // Setup early steps
-    testContext.mockJobWorker("checkOrderInformation")
-            .thenComplete();
-    testContext.mockJobWorker("orderQueue")
-            .thenComplete();
+    publishOrderConfirmation("TEST-FAIL-001");
 
-    // Simulate quality failure — conditional gateway should route to end
-    testContext.mockJobWorker("packingQueue")
-            .thenComplete(Map.of("isQualityPassed", false));
-
-    // Verify process ends without calling "initiateDelivery"
-    assertThat(instance).isCompleted();
-    // Optional: verify state to ensure correct branch was taken
+    // On failure, process routes to Manual Review user task and remains active
+    assertThat(instance).isActive();
+    assertThat(instance).hasActiveElements("Activity_1nid25r");
 }
 ```
 
-### Testing Variable Flow
+### Notes for This BPMN
+
+- Start event goes to a **receive task** (`Confirm Order`), so tests must publish `Message_Confirmation`.
+- Correlation key is `orderId` (message subscription uses `=orderId`).
+- Worker types are `inventoryAllocation`, `packingQueue`, and `deliveryQueue`.
+- Gateway branch depends on `IS_QUALITY_PASSED`.
+- In this project, explicit `mockJobWorker(...)` is not required for service tasks because Spring workers are polling during the test run.
+
+### Optional: Deterministic Task Control
 
 ```java
 @Test
-void shouldPropagateVariablesToDownstream() {
+void shouldUseMockWorkersWhenYouNeedStrictStepControl() {
     deployOrderProcess();
 
-    ProcessInstanceEvent instance = client.newCreateInstanceCommand()
-            .bpmnProcessId("OrderProcessing")
-            .latestVersion()
-            .variables(Map.of(
-                "priority", "HIGH",
-                "shippingAddress", "123 Main St"
-            ))
-            .send()
-            .join();
+    ProcessInstanceEvent instance = startOrderProcess("ORDER-MOCK-001");
 
-    testContext.mockJobWorker("orderQueue")
-            .thenComplete(Map.of(
-                "shippingCost", 15.99,
-                "estimatedDelivery", "2026-03-30"
-            ));
+    publishOrderConfirmation("ORDER-MOCK-001");
 
-    // Verify downstream tasks receive merged variables
-    assertThat(instance).isActive(); // Can inspect via REST if needed
+    // Use mock workers only when deterministic control is needed.
+    testContext.mockJobWorker("inventoryAllocation")
+            .thenComplete(Map.of("IS_INVENTORY_ALLOCATED", true));
+    testContext.mockJobWorker("packingQueue")
+            .thenComplete(Map.of("IS_QUALITY_PASSED", true));
+    testContext.mockJobWorker("deliveryQueue").thenComplete();
+
+    assertThat(instance).isCompleted();
 }
 ```
 
