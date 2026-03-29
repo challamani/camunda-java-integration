@@ -135,6 +135,13 @@ void shouldCompleteOrderProcessingSuccessPath() {
 
     ProcessInstanceEvent instance = startOrderProcess("ORDER-001");
 
+    testContext.mockJobWorker("inventoryAllocation")
+            .thenComplete(Map.of("IS_INVENTORY_ALLOCATED", true));
+    testContext.mockJobWorker("packingQueue")
+            .thenComplete(Map.of("IS_QUALITY_PASSED", true));
+    testContext.mockJobWorker("deliveryQueue")
+            .thenComplete(Map.of("READY_TO_DELIVERY", true));
+
     // Receive task is released by message correlation on orderId
     publishOrderConfirmation("ORDER-001");
 
@@ -152,6 +159,11 @@ void shouldStayActiveWhenQualityCheckFails() {
 
     ProcessInstanceEvent instance = startOrderProcess("TEST-FAIL-001");
 
+    testContext.mockJobWorker("inventoryAllocation")
+            .thenComplete(Map.of("IS_INVENTORY_ALLOCATED", true));
+    testContext.mockJobWorker("packingQueue")
+            .thenComplete(Map.of("IS_QUALITY_PASSED", false));
+
     publishOrderConfirmation("TEST-FAIL-001");
 
     // On failure, process routes to Manual Review user task and remains active
@@ -166,7 +178,7 @@ void shouldStayActiveWhenQualityCheckFails() {
 - Correlation key is `orderId` (message subscription uses `=orderId`).
 - Worker types are `inventoryAllocation`, `packingQueue`, and `deliveryQueue`.
 - Gateway branch depends on `IS_QUALITY_PASSED`.
-- In this project, explicit `mockJobWorker(...)` is not required for service tasks because Spring workers are polling during the test run.
+- If production workers are disabled in tests (for example with `@Profile("!test")`), service-task mocks are required via `mockJobWorker(...)`.
 
 ### Optional: Deterministic Task Control
 

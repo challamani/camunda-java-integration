@@ -58,6 +58,14 @@ class OrderProcessTest {
         deployOrderProcess();
 
         ProcessInstanceEvent instance = startOrderProcess("ORDER-001");
+
+        testContext.mockJobWorker("inventoryAllocation")
+                .thenComplete(Map.of("IS_INVENTORY_ALLOCATED", true));
+        testContext.mockJobWorker("packingQueue")
+                .thenComplete(Map.of("IS_QUALITY_PASSED", true));
+        testContext.mockJobWorker("deliveryQueue")
+                .thenComplete(Map.of("READY_TO_DELIVERY", true));
+
         publishOrderConfirmation("ORDER-001");
 
         assertThat(instance).isCreated();
@@ -69,6 +77,12 @@ class OrderProcessTest {
         deployOrderProcess();
 
         ProcessInstanceEvent instance = startOrderProcess("TEST-FAIL-001");
+
+        testContext.mockJobWorker("inventoryAllocation")
+                .thenComplete(Map.of("IS_INVENTORY_ALLOCATED", true));
+        testContext.mockJobWorker("packingQueue")
+                .thenComplete(Map.of("IS_QUALITY_PASSED", false));
+
         publishOrderConfirmation("TEST-FAIL-001");
         // On failed quality check, the token moves to Manual Review and remains active.
         assertThat(instance).isActive();

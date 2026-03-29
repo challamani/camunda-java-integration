@@ -3,6 +3,7 @@ package com.practice.challamani.camunda.workers;
 import io.camunda.client.annotation.JobWorker;
 import io.camunda.client.api.response.ActivatedJob;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
@@ -11,6 +12,7 @@ import java.util.Map;
 
 @Component
 @Slf4j
+@Profile("!test")
 public class OrderProcessHandler {
 
     private static final String VAR_PROCESSED_AT = "processedAt";
