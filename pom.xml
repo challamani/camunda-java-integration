@@ -3,11 +3,11 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.practice.challamani</groupId>
-	<artifactId>camunda-external-worker</artifactId>
+	<artifactId>camunda-spring-boot-integration</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
-	<name>camunda-external-worker</name>
+	<name>camunda-spring-boot-integration</name>
 	<url>http://maven.apache.org</url>
 
 	<parent>

@@ -1,51 +1,43 @@
-# End-to-End BPMN Testing with Testcontainers
+# BPMN Testing Guide (Testcontainers + Remote Engine)
 
 ## Overview
 
-This guide explains how to implement end-to-end (E2E) BPMN process testing using **Camunda's process-test-spring** library with **Testcontainers** before deploying to a Camunda 8 engine.
+This project supports two BPMN testing styles:
 
-Instead of manually testing BPMN workflows through the UI or relying on live-engine integration tests, testcontainer-based E2E testing allows you to:
-- Automatically validate process flows in isolated test environments
-- Catch deployment errors early in the development cycle
-- Verify variable flows, conditional logic, and error handling
-- Ensure process modifications don't break existing workflows
+- `OrderProcessTest` — managed Testcontainers runtime, starts a Camunda Docker container automatically
+- `OrderProcessRemoteTest` — remote runtime, connects to an already running Camunda 8 engine
 
----
+Both validate the same BPMN (`order-process-v2.bpmn`) and message correlation behavior.
 
-## Architecture Overview
+## When to Use Which
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  JUnit 5 Test Suite (@CamundaSpringProcessTest)        │
-├─────────────────────────────────────────────────────────┤
-│  ┌───────────────────────────────────────────────────┐  │
-│  │  Spring Boot Test Context (ActiveProfiles)        │  │
-│  │  - Loads test-specific application properties     │  │
-│  │  - Disables production worker registration        │  │
-│  └───────────────────────────────────────────────────┘  │
-│  ┌───────────────────────────────────────────────────┐  │
-│  │  Testcontainer (Camunda 8 Docker Image)           │  │
-│  │  - Managed runtime (MANAGED mode)                 │  │
-│  │  - Zeebe gRPC gateway + REST API                  │  │
-│  │  - Isolated from production                       │  │
-│  └───────────────────────────────────────────────────┘  │
-│  ┌───────────────────────────────────────────────────┐  │
-│  │  CamundaClient + Spring Job Workers               │  │
-│  │  - Deploy BPMN definitions                        │  │
-│  │  - Start process instances                        │  │
-│  │  - Workers poll and complete service tasks        │  │
-│  │  - Assert process state                           │  │
-│  └───────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────┘
-```
+| | `OrderProcessTest` | `OrderProcessRemoteTest` |
+|---|---|---|
+| Profile | `test-managed` | `test-remote` |
+| Runtime mode | `MANAGED` | `REMOTE` |
+| Docker required | ✅ Yes | ❌ No |
+| Camunda engine required | auto-managed | ✅ Must be running |
+| Best for | CI/CD, full isolation | Local dev with engine already running |
 
----
+## Prerequisites
 
-## Setup & Configuration
+### Testcontainers (`test-managed`)
+- Docker must be installed and running
+- No manual engine setup needed — container starts automatically
 
-### 1. Maven Dependencies
+### Remote (`test-remote`)
+- A Camunda 8 engine must be running and reachable **before** tests start
+- Default endpoints (from `application.yaml`):
+  - gRPC: `http://localhost:26500`
+  - REST: `http://localhost:8080`
+- Start a local engine via [Camunda 8 Run](https://docs.camunda.io/docs/self-managed/setup/deploy/local/c8run/):
+  ```bash
+  cd c8run-8* && ./start.sh
+  ```
 
-Ensure your `pom.xml` includes:
+## Dependencies
+
+Single test dependency covers both approaches in `pom.xml`:
 
 ```xml
 <dependency>
@@ -56,150 +48,107 @@ Ensure your `pom.xml` includes:
 </dependency>
 ```
 
-### 2. Test Profile Configuration
+Supported runtime modes in this version: `MANAGED` and `REMOTE`.
 
-Create `src/test/resources/application-test.yaml`:
+## Configuration Profiles
+
+### 1) Testcontainers profile
+
+`src/test/resources/application-test-managed.yaml`
 
 ```yaml
 camunda:
   process-test:
-    runtime-mode: MANAGED                 # Managed testcontainer lifecycle
-    camunda-docker-image-version: 8.8.0   # Camunda version to test against
+    runtime-mode: MANAGED
+    camunda-docker-image-version: 8.8.0
     multi-tenancy-enabled: false
+
+client-config:
+  enabled: false
 ```
 
-**Key Configuration Points:**
-- `runtime-mode: MANAGED` — Testcontainer manages Camunda instance startup/shutdown
-- `camunda-docker-image-version` — Pin to tested Camunda version (not latest)
+### 2) Remote profile
 
----
+`src/test/resources/application-test-remote.yaml`
 
-## Writing BPMN Tests
+```yaml
+camunda:
+  process-test:
+    runtime-mode: REMOTE
+    multi-tenancy-enabled: false
 
-### Test Class Setup
-
-```java
-@SpringBootTest
-@CamundaSpringProcessTest
-@ActiveProfiles("test")  // Loads application-test.yaml
-class OrderProcessTest {
-
-    @Autowired
-    private CamundaClient client;
-
-    @Autowired
-    private CamundaProcessTestContext testContext; // Optional for mock-worker scenarios
-
-    private static final String PROCESS_ID = "Process_0rcqim1";
-    private static final String MESSAGE_NAME = "Message_Confirmation";
-
-    private void deployOrderProcess() {
-        client.newDeployResourceCommand()
-                .addResourceFromClasspath("order-process-v2.bpmn")
-                .send()
-                .join();
-    }
-
-    private ProcessInstanceEvent startOrderProcess(String orderId) {
-        return client.newCreateInstanceCommand()
-                .bpmnProcessId(PROCESS_ID)
-                .latestVersion()
-                .variables(Map.of("orderId", orderId))
-                .send()
-                .join();
-    }
-
-    private void publishOrderConfirmation(String orderId) {
-        client.newPublishMessageCommand()
-                .messageName(MESSAGE_NAME)
-                .correlationKey(orderId)
-                .variables(Map.of("orderId", orderId))
-                .send()
-                .join();
-    }
-    // ... test methods ...
-}
+client-config:
+  enabled: false
 ```
 
-**Annotations:**
-- `@SpringBootTest` — Loads Spring application context
-- `@CamundaSpringProcessTest` — Provisions Testcontainer + Camunda client
-- `@ActiveProfiles("test")` — Applies test configuration
+> **Note:** In `REMOTE` mode, `CamundaClient` connects to the engine configured in `application.yaml` (`grpc-address`, `rest-address`). Ensure those endpoints are reachable before running the tests.
 
-### Example: Success Path Test
+## Test Classes
 
-```java
-@Test
-void shouldCompleteOrderProcessingSuccessPath() {
-    deployOrderProcess();
+- `src/test/java/com/practice/challamani/camunda/OrderProcessTest.java`
+  - Profile: `test-managed`
+  - Starts a Camunda 8 Docker container via Testcontainers
 
-    ProcessInstanceEvent instance = startOrderProcess("ORDER-001");
+- `src/test/java/com/practice/challamani/camunda/OrderProcessRemoteTest.java`
+  - Profile: `test-remote`
+  - Connects to a pre-running Camunda 8 engine — **engine must be started manually**
 
-    testContext.mockJobWorker("inventoryAllocation")
-            .thenComplete(Map.of("IS_INVENTORY_ALLOCATED", true));
-    testContext.mockJobWorker("packingQueue")
-            .thenComplete(Map.of("IS_QUALITY_PASSED", true));
-    testContext.mockJobWorker("deliveryQueue")
-            .thenComplete(Map.of("READY_TO_DELIVERY", true));
+## Process Notes for Both Approaches
 
-    // Receive task is released by message correlation on orderId
-    publishOrderConfirmation("ORDER-001");
+- Process ID: `OrderProcessDefinition_v2`
+- Message name: `Message_Confirmation`
+- Correlation key expression: `=orderId`
+- Worker types: `inventoryAllocation`, `packingQueue`, `deliveryQueue`
+- Failed quality path routes to user task `Activity_1nid25r` (Manual Review)
 
-    assertThat(instance).isCreated();
-    assertThat(instance).isCompleted();
-}
+## BPMN Coverage Report
+
+After running tests, Camunda generates a coverage report at:
+
+```
+target/coverage-report/report.html
 ```
 
-### Example: Failed Quality Branch
+Open it in a browser to visualise which BPMN elements and sequence flows were exercised by each test.
 
-```java
-@Test
-void shouldStayActiveWhenQualityCheckFails() {
-    deployOrderProcess();
+### Current Coverage — `OrderProcessDefinition_v2`
 
-    ProcessInstanceEvent instance = startOrderProcess("TEST-FAIL-001");
+| Scope | Coverage |
+|---|---|
+| Overall (all tests) | **93.75%** (15 / 16 elements) |
+| `shouldCompleteOrderProcessingSuccessPath` | 81.25% |
+| `shouldStayActiveAtManualReviewWhenQualityFails` | 68.75% |
 
-    testContext.mockJobWorker("inventoryAllocation")
-            .thenComplete(Map.of("IS_INVENTORY_ALLOCATED", true));
-    testContext.mockJobWorker("packingQueue")
-            .thenComplete(Map.of("IS_QUALITY_PASSED", false));
+#### Covered elements (combined)
 
-    publishOrderConfirmation("TEST-FAIL-001");
+| Element | Type | Covered by |
+|---|---|---|
+| `StartEvent_1` | Start Event | Both tests |
+| `Activity_0dnqpva` | Receive Task — Confirm Order | Both tests |
+| `Activity_0gw8k50` | Service Task — Inventory Allocation | Both tests |
+| `Activity_1g0gkk3` | Service Task — Quality & Packing | Both tests |
+| `Gateway_04bjqao` | Exclusive Gateway | Both tests |
+| `Activity_0gf6y5x` | Send Task — Initiate Delivery | Success path |
+| `Event_1jog9qi` | End Event | Success path |
+| `Activity_1nid25r` | User Task — Manual Review | Failure path |
 
-    // On failure, process routes to Manual Review user task and remains active
-    assertThat(instance).isActive();
-    assertThat(instance).hasActiveElements("Activity_1nid25r");
-}
-```
+#### Covered sequence flows (combined)
 
-### Notes for This BPMN
+`Flow_02c2wt0` → `Flow_07wxlji` → `Flow_0inlpdr` → `Flow_0mqinnp` → `Flow_0h1s7qv` (quality pass) → `Flow_0iyj71e` → `Flow_1aswyhx` (quality fail)
 
-- Start event goes to a **receive task** (`Confirm Order`), so tests must publish `Message_Confirmation`.
-- Correlation key is `orderId` (message subscription uses `=orderId`).
-- Worker types are `inventoryAllocation`, `packingQueue`, and `deliveryQueue`.
-- Gateway branch depends on `IS_QUALITY_PASSED`.
-- If production workers are disabled in tests (for example with `@Profile("!test")`), service-task mocks are required via `mockJobWorker(...)`.
+#### ⚠️ Uncovered element
 
-### Optional: Deterministic Task Control
+| Element | Type | Reason |
+|---|---|---|
+| `Flow_1ur84l7` | Sequence Flow — Manual Review → Quality & Packing | No test completes the Manual Review user task to trigger the retry loop |
 
-```java
-@Test
-void shouldUseMockWorkersWhenYouNeedStrictStepControl() {
-    deployOrderProcess();
+To reach 100% coverage, add a test that completes the Manual Review user task and re-enters the Quality & Packing service task.
 
-    ProcessInstanceEvent instance = startOrderProcess("ORDER-MOCK-001");
+## About Service Task Mocking
 
-    publishOrderConfirmation("ORDER-MOCK-001");
+Real job workers (`OrderProcessHandler`) are disabled in both test profiles via `@Profile("!test-managed & !test-remote")`, so `mockJobWorker(...)` drives all service-task completions deterministically in both test classes.
 
-    // Use mock workers only when deterministic control is needed.
-    testContext.mockJobWorker("inventoryAllocation")
-            .thenComplete(Map.of("IS_INVENTORY_ALLOCATED", true));
-    testContext.mockJobWorker("packingQueue")
-            .thenComplete(Map.of("IS_QUALITY_PASSED", true));
-    testContext.mockJobWorker("deliveryQueue").thenComplete();
-
-    assertThat(instance).isCompleted();
-}
-```
-
----
+| Profile | Workers Active | Mocking |
+|---|---|---|
+| `test-managed` | ❌ disabled | ✅ `mockJobWorker(...)` required |
+| `test-remote` | ❌ disabled | ✅ `mockJobWorker(...)` required |

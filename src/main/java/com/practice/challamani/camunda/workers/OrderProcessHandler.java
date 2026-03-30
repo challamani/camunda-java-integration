@@ -12,7 +12,7 @@ import java.util.Map;
 
 @Component
 @Slf4j
-@Profile("!test")
+@Profile("!test-managed & !test-remote")
 public class OrderProcessHandler {
 
     private static final String VAR_PROCESSED_AT = "processedAt";

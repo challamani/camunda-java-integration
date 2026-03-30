@@ -1,6 +1,5 @@
 package com.practice.challamani.camunda;
 
-
 import io.camunda.client.CamundaClient;
 import io.camunda.client.api.response.ProcessInstanceEvent;
 import io.camunda.process.test.api.CamundaProcessTestContext;
@@ -16,8 +15,8 @@ import static io.camunda.process.test.api.CamundaAssert.assertThat;
 
 @SpringBootTest
 @CamundaSpringProcessTest
-@ActiveProfiles("test-managed")
-class OrderProcessTest {
+@ActiveProfiles("test-remote")
+class OrderProcessRemoteTest {
 
     private static final String PROCESS_ID = "OrderProcessDefinition_v2";
     private static final String MESSAGE_NAME = "Message_Confirmation";
@@ -58,6 +57,14 @@ class OrderProcessTest {
         deployOrderProcess();
 
         ProcessInstanceEvent instance = startOrderProcess("ORDER-001");
+
+        testContext.mockJobWorker("inventoryAllocation")
+                .thenComplete(Map.of("IS_INVENTORY_ALLOCATED", true));
+        testContext.mockJobWorker("packingQueue")
+                .thenComplete(Map.of("IS_QUALITY_PASSED", true));
+        testContext.mockJobWorker("deliveryQueue")
+                .thenComplete(Map.of("READY_TO_DELIVERY", true));
+
         publishOrderConfirmation("ORDER-001");
 
         assertThat(instance).isCreated();
@@ -65,7 +72,7 @@ class OrderProcessTest {
     }
 
     @Test
-    void shouldStayActiveWhenQualityCheckFails() {
+    void shouldStayActiveAtManualReviewWhenQualityFails() {
         deployOrderProcess();
 
         ProcessInstanceEvent instance = startOrderProcess("TEST-FAIL-001");
@@ -76,9 +83,8 @@ class OrderProcessTest {
                 .thenComplete(Map.of("IS_QUALITY_PASSED", false));
 
         publishOrderConfirmation("TEST-FAIL-001");
-        // On failed quality check, the token moves to Manual Review and remains active.
+
         assertThat(instance).isActive();
         assertThat(instance).hasActiveElements("Activity_1nid25r");
     }
 }
-

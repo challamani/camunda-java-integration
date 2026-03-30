@@ -1,0 +1,9 @@
+camunda:
+  process-test:
+    runtime-mode: REMOTE
+    multi-tenancy-enabled: false
+    camunda-env-vars:
+      zeebe.clock.controlled: true
+client-config:
+  enabled: false
+
