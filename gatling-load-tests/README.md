@@ -51,6 +51,14 @@ mvn -f ./gatling-load-tests/pom.xml gatling:test \
 
 Gatling reports are generated under `gatling-load-tests/target/gatling`.
 
+## Report Snapshot
+
+![Gatling report snapshot](docs/gatling-report-summary.png)
+
+Open the full interactive HTML report from the latest run in:
+
+- `gatling-load-tests/target/gatling/<run-id>/index.html`
+
 If you previously hit `Couldn't find a ComponentLibrary implementation`, pull latest `gatling-load-tests/pom.xml` and rerun with:
 
 ```bash
