@@ -1,4 +1,3 @@
-
 # Camunda 8 and Spring Boot 3.x integration examples
 
 This repo contains a sample Spring Boot application that demonstrates how to integrate with Camunda 8 using the Zeebe client. It includes examples of external service tasks and receive tasks, showcasing how to interact with the Camunda engine from a Spring Boot application.
@@ -155,3 +154,26 @@ curl -X POST http://localhost:8082/api/processes/publish-message \
 
 ![camunda-process-screenshot.png](src/main/resources/camunda-process-screenshot.png)
 
+## Gatling Load Testing Module
+
+A standalone Gatling module is available at `gatling-load-tests` to run a chained flow load test for:
+
+1. `POST /api/processes/start`
+2. `POST /api/processes/publish-message`
+
+Run it with:
+
+```bash
+mvn -f gatling-load-tests/pom.xml gatling:test
+```
+
+You can configure request volume and timings via JVM properties, for example:
+
+```bash
+mvn -f gatling-load-tests/pom.xml gatling:test \
+  -Dusers=25 \
+  -DrampSeconds=10 \
+  -DpauseMillis=50
+```
+
+See `gatling-load-tests/README.md` for all properties.

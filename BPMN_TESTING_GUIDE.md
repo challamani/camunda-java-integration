@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project supports two BPMN testing styles:
+This repo supports two BPMN testing styles:
 
 - `OrderProcessTest` — managed Testcontainers runtime, starts a Camunda Docker container automatically
 - `OrderProcessRemoteTest` — remote runtime, connects to an already running Camunda 8 engine
@@ -118,31 +118,6 @@ Open it in a browser to visualise which BPMN elements and sequence flows were ex
 | Overall (all tests) | **93.75%** (15 / 16 elements) |
 | `shouldCompleteOrderProcessingSuccessPath` | 81.25% |
 | `shouldStayActiveAtManualReviewWhenQualityFails` | 68.75% |
-
-#### Covered elements (combined)
-
-| Element | Type | Covered by |
-|---|---|---|
-| `StartEvent_1` | Start Event | Both tests |
-| `Activity_0dnqpva` | Receive Task — Confirm Order | Both tests |
-| `Activity_0gw8k50` | Service Task — Inventory Allocation | Both tests |
-| `Activity_1g0gkk3` | Service Task — Quality & Packing | Both tests |
-| `Gateway_04bjqao` | Exclusive Gateway | Both tests |
-| `Activity_0gf6y5x` | Send Task — Initiate Delivery | Success path |
-| `Event_1jog9qi` | End Event | Success path |
-| `Activity_1nid25r` | User Task — Manual Review | Failure path |
-
-#### Covered sequence flows (combined)
-
-`Flow_02c2wt0` → `Flow_07wxlji` → `Flow_0inlpdr` → `Flow_0mqinnp` → `Flow_0h1s7qv` (quality pass) → `Flow_0iyj71e` → `Flow_1aswyhx` (quality fail)
-
-#### ⚠️ Uncovered element
-
-| Element | Type | Reason |
-|---|---|---|
-| `Flow_1ur84l7` | Sequence Flow — Manual Review → Quality & Packing | No test completes the Manual Review user task to trigger the retry loop |
-
-To reach 100% coverage, add a test that completes the Manual Review user task and re-enters the Quality & Packing service task.
 
 ## About Service Task Mocking
 
